@@ -10,11 +10,10 @@ from app.core.config import UPLOAD_DIR
 from app.db import models
 from app.db.session import SessionLocal
 from app.services.motion_service import MotionService
-from app.services.storage_service import motion_service, storage_manager  # storage_manager singleton
+from app.services.storage_service import storage_manager
 
-# NOTE: motion_service is imported from motion_service module; ensure singleton or create new
-# Here we assume motion_service is imported from motion_service module, or you can instantiate:
-# motion_service = MotionService(threshold=200000.0)
+# single MotionService instance
+motion_service = MotionService(threshold=200000.0)
 
 class StreamHandle:
     def __init__(self, name: str, url: str, interval: float):
@@ -54,7 +53,6 @@ def process_frame_sync(contents: bytes) -> Dict[str, Any]:
     """
     Save contents to file, insert ImageLog, run motion detection and record MotionEvent.
     Also call storage_manager to manage retention.
-    This is synchronous and intended to be called inside asyncio.to_thread.
     """
     ext = ".jpg"
     fname = f"{datetime.datetime.utcnow().strftime('%Y%m%dT%H%M%S')}_{uuid.uuid4().hex}{ext}"
@@ -69,19 +67,19 @@ def process_frame_sync(contents: bytes) -> Dict[str, Any]:
         db.commit()
         db.refresh(img)
 
-        # Tell storage manager about this new saved image (buffer it)
+        # Inform storage manager (buffers this image)
         try:
             storage_manager.add_new_image(image_id=img.id, filepath=dest, timestamp=img.timestamp)
         except Exception:
             pass
 
-        # motion detection + record
+        # motion detection + DB record
         try:
             me = motion_service.analyze_and_record(db, image_id=img.id, img_bytes=contents)
         except Exception:
             me = None
 
-        # After motion analysis, let storage manager decide retention
+        # Let storage manager decide retention (preserve/delete)
         try:
             if me is not None:
                 storage_manager.handle_motion_result(image_id=img.id, is_motion=bool(me.is_motion))

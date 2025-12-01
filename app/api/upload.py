@@ -10,7 +10,7 @@ from app.core.config import UPLOAD_DIR
 from app.db.session import SessionLocal
 from app.db import models
 from app.services.motion_service import MotionService
-from app.services.storage_service import storage_manager  # <-- new
+from app.services.storage_service import storage_manager
 
 router = APIRouter()
 motion_service = MotionService(threshold=200000.0)
@@ -45,7 +45,6 @@ async def upload_image(file: UploadFile = File(...), db: Session = Depends(get_d
     try:
         storage_manager.add_new_image(image_id=img.id, filepath=dest, timestamp=img.timestamp)
     except Exception:
-        # don't break upload on storage-manager error
         pass
 
     try:

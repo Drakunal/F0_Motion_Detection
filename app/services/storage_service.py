@@ -57,13 +57,12 @@ class StorageManager:
                 if KEEP_ALL_FRAMES:
                     return
                 # Delete any images older than current buffer window and not preserved.
-                # We'll compute which image ids are inside buffer; everything else may be removed
                 buffer_ids = {img_id for img_id, _, _ in self.buffer}
                 self._delete_images_not_in(buffer_ids)
 
     def _delete_images_not_in(self, keep_ids):
         """
-        Delete images whose id is not in keep_ids and not in preserved_ids, and older than buffer timestamp.
+        Delete images whose id is not in keep_ids and not in preserved_ids.
         """
         db = SessionLocal()
         try:
@@ -131,5 +130,5 @@ class StorageManager:
         finally:
             db.close()
 
-# create a singleton manager instance (import from other modules)
+# singleton instance
 storage_manager = StorageManager(upload_dir=UPLOAD_DIR, buffer_size=PRE_MOTION_BUFFER, retention_hours=RETENTION_HOURS)
