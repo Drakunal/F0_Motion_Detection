@@ -1,3 +1,4 @@
+# app/api/upload.py
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from pathlib import Path
@@ -9,6 +10,7 @@ from app.core.config import UPLOAD_DIR
 from app.db.session import SessionLocal
 from app.db import models
 from app.services.motion_service import MotionService
+from app.services.storage_service import storage_manager  # <-- new
 
 router = APIRouter()
 motion_service = MotionService(threshold=200000.0)
@@ -39,10 +41,24 @@ async def upload_image(file: UploadFile = File(...), db: Session = Depends(get_d
     db.commit()
     db.refresh(img)
 
+    # Add to in-memory buffer for retention logic
+    try:
+        storage_manager.add_new_image(image_id=img.id, filepath=dest, timestamp=img.timestamp)
+    except Exception:
+        # don't break upload on storage-manager error
+        pass
+
     try:
         me = motion_service.analyze_and_record(db, image_id=img.id, img_bytes=contents)
     except Exception:
         me = None
+
+    # Let storage manager decide whether to keep or delete older frames
+    try:
+        if me is not None:
+            storage_manager.handle_motion_result(image_id=img.id, is_motion=bool(me.is_motion))
+    except Exception:
+        pass
 
     return JSONResponse({
         "id": img.id,

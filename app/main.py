@@ -8,6 +8,7 @@ from app.core.config import DATA_DIR, UPLOAD_DIR
 from app.db import models
 from app.db.session import engine
 from app.api import upload, images, motion, stream
+from app.services.storage_service import storage_manager
 
 # STATIC_DIR should be app/static (same folder as this file's parent)
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -54,3 +55,23 @@ async def root():
     return HTMLResponse("<h3>F0 Image Ingest Server</h3>"
                         "<p><a href='/static/camera.html'>Camera page</a> | "
                         "<a href='/static/viewer.html'>Viewer</a></p>")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    models.Base.metadata.create_all(bind=engine)
+
+    # start periodic cleanup thread (daemon)
+    try:
+        storage_manager.start_periodic_cleanup()
+    except Exception:
+        pass
+
+    yield
+
+    # on shutdown stop cleanup thread gracefully
+    try:
+        storage_manager.stop_periodic_cleanup()
+    except Exception:
+        pass
