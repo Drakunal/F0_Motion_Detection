@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Data directories (uploads, SQLite DB)
+data/
+!data/.keep    # (optional) keep empty folder in git
+
+# Logs
+*.log
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Uvicorn / cache
+*.pid
+*.cache

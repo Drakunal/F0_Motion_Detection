@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Image viewer</title>
+</head>
+<body>
+  <h2>Uploaded images</h2>
+  <div id="list"></div>
+  <h3>Latest image</h3>
+  <img id="latest" src="" width="480" />
+
+<script>
+async function refresh(){
+  const res = await fetch('/images');
+  const rows = await res.json();
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  if (rows.length === 0) {
+    list.innerText = 'No images yet';
+    document.getElementById('latest').src = '';
+    return;
+  }
+  rows.forEach(r => {
+    const el = document.createElement('div');
+    el.innerHTML = `<b>${r.id}</b> - ${r.timestamp} - <a href="/images/${r.id}/raw" target="_blank">raw</a>`;
+    list.appendChild(el);
+  });
+  const latest = rows[0];
+  document.getElementById('latest').src = `/images/${latest.id}/raw`;
+}
+setInterval(refresh, 4000);
+refresh();
+</script>
+</body>
+</html>

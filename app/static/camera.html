@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Camera uploader</title>
+</head>
+<body>
+  <h2>Phone Camera — auto-upload</h2>
+  <video id="video" autoplay playsinline width="320" height="240"></video>
+  <canvas id="canvas" width="320" height="240" style="display:none"></canvas>
+  <p>
+    <label>Capture interval (s): <input id="interval" type="number" value="5" min="1" /></label>
+  </p>
+  <button id="start">Start</button>
+  <button id="stop">Stop</button>
+  <div id="log"></div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let timer = null;
+let stream = null;
+
+async function startCamera(){
+  stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  video.srcObject = stream;
+}
+
+async function sendFrame(){
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+  const fd = new FormData();
+  fd.append('file', blob, 'frame.jpg');
+
+  try{
+    const res = await fetch('/upload', { method: 'POST', body: fd });
+    const j = await res.json();
+    document.getElementById('log').innerText = JSON.stringify(j);
+  }catch(e){
+    console.error(e);
+  }
+}
+
+document.getElementById('start').addEventListener('click', async ()=>{
+  if (!stream) await startCamera();
+  const s = parseInt(document.getElementById('interval').value || '5', 10) * 1000;
+  if (timer) clearInterval(timer);
+  timer = setInterval(sendFrame, s);
+  sendFrame();
+});
+
+document.getElementById('stop').addEventListener('click', ()=>{
+  if (timer) clearInterval(timer);
+  if (stream){
+    stream.getTracks().forEach(t=>t.stop());
+    stream = null;
+  }
+});
+</script>
+</body>
+</html>
